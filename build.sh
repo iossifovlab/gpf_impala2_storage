@@ -58,50 +58,46 @@ function main() {
 
   }
 
-#   build_stage "Clone projects"
-#   {
-#     build_run_local mkdir -p projects
+  build_stage "Clone projects"
+  {
+    build_run_local mkdir -p projects
 
-#     # the quotes around 'EOF' are signifcant - it forces bash to treat the string as literal string until EOF
-#     build_run_local bash -e -x <<'EOF'
-#         project_name="iossifovlab.gpf"
-#         if ! [ -d "projects/$project_name.repo" ]; then
-#           git clone "ssh://git@github.com/${project_name/.//}" "projects/$project_name.repo"
-#         fi
-# EOF
+    # the quotes around 'EOF' are signifcant - it forces bash to treat the string as literal string until EOF
+    build_run_local bash -e -x <<'EOF'
+        project_name="iossifovlab.gpf"
+        if ! [ -d "projects/$project_name.repo" ]; then
+          git clone "ssh://git@github.com/${project_name/.//}" "projects/$project_name.repo"
+        fi
+EOF
 
-#     # the quotes around 'EOF' are signifcant - it forces bash to treat the string as literal string until EOF
-#     build_run_local env gpf_git_describe="$(e gpf_git_describe)" gpf_git_branch="$(e gpf_git_branch)" bash -e -x << 'EOF'
+    # the quotes around 'EOF' are signifcant - it forces bash to treat the string as literal string until EOF
+    build_run_local env gpf_git_describe="$(e gpf_git_describe)" gpf_git_branch="$(e gpf_git_branch)" bash -e -x << 'EOF'
 
-#         project_name="iossifovlab.gpf"
-#         project_repo_dirname="iossifovlab.gpf.repo"
+        project_name="iossifovlab.gpf"
+        project_repo_dirname="iossifovlab.gpf.repo"
 
-#         cd "projects/$project_repo_dirname"
-#         git checkout $gpf_git_branch
-#         git pull --ff-only
+        cd "projects/$project_repo_dirname"
+        git checkout $gpf_git_branch
+        git pull --ff-only
 
-#         git checkout "$gpf_git_describe"
-#         cd -
-# EOF
+        git checkout "$gpf_git_describe"
+        cd -
+EOF
 
-#   }
+  }
 
   local gpf_impala_storage_image="gpf-impala-storage-dev"
   local gpf_impala_storage_image_ref
   # create gpf docker image
   build_stage "Create gpf_impala_storage docker image"
   {
-    build_run_local cd projects/iossifovlab.gpf.repo/impala_storage
-    build_run_local ls -l
-
     local gpf_dev_tag
     gpf_dev_tag="$(e docker_img_gpf_dev_tag)"
-    build_docker_image_create "$gpf_impala_storage_image" . ./Dockerfile "$gpf_dev_tag"
-    gpf_impala_storage_image_ref="$(e gpf_impala_storage_image)"
-
-    build_run_local cd -
-    build_run_local pwd
-    build_run_local ls -l
+    build_docker_image_create "$gpf_impala_storage_image" \
+        "projects/iossifovlab.gpf.repo/impala_storage" \
+        "projects/iossifovlab.gpf.repo/impala_storage/Dockerfile" \
+        "$gpf_dev_tag"
+    gpf_impala_storage_image_ref="$(e docker_img_gpf_impala_storage_dev)"
   }
 
   build_stage "Create network"
@@ -127,162 +123,37 @@ function main() {
     build_run_ctx_persist ctx:ctx_impala
   }
 
-#   build_stage "Re-tag docker images"
-#   {
-#     collected_keys=()
-#     for key in "${!E[@]}"; do
-#         if [[ "$key" == docker_img_* ]] && [[ "$key" != *_tag ]] \
-#             && [[ "$key" != *_name ]] && [[ "$key" != *_ref ]] \
-#             && [[ "$key" != *_repo ]]; then
-#         collected_keys+=("${key}")
-#         fi
-#     done
-#     echo "" > "build-env/gpf-staging-internal-images.yaml"
+  # Tests - dae
+  build_stage "Tests - impala_storage"
+  {
 
-#     BUILD_NUMBER="$(ee_metadata build_no)"
-#     for key in "${collected_keys[@]}"; do
-#        image_ref=${E[$key]}
-#        image_name=${E[${key}_name]}
-#        image_repo=${E[${key}_repo]}
-#        image_staging_ref=${image_repo}/${image_name}:staging-$BUILD_NUMBER
-#        echo "$image_name:" >> "build-env/gpf-staging-internal-images.yaml"
-#        echo "  source: $image_ref" >> "build-env/gpf-staging-internal-images.yaml"
-#        echo "  stage: $image_staging_ref" >> "build-env/gpf-staging-internal-images.yaml"
+    build_run_ctx_init "container" "${gpf_impala_storage_image_ref}" \
+      --network "${ctx_network["network_id"]}" \
+      --env DAE_DB_DIR="/wd/data/data-hg19-local/" \
+      --env GRR_DEFINITION_FILE="/wd/cache/grr_definition.yaml" \
+      --env TEST_REMOTE_HOST="gpfremote" \
+      --env DAE_HDFS_HOST="impala" \
+      --env DAE_IMPALA_HOST="impala"
 
-#        build_run_local docker pull ${image_ref}
-#        build_run_local docker image tag ${image_ref} ${image_staging_ref}
-#        build_run_local docker image push ${image_staging_ref}
-#     done
-#   }
+    defer_ret build_run_ctx_reset
 
-#   build_stage "Destroy previous staging on dory.seqpipe.org"
-#   {
-#     local image_ref
-#     image_ref="$(e docker_img_iossifovlab_infra)"
-#     build_run_ctx_init "container" "$image_ref"
-#     defer_ret build_run_ctx_reset
+    for d in /wd/dae /wd/wdae /wd/dae_conftests /wd/impala_storage; do
+      build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
+        pip install -e .'
+    done
 
-#     build_run bash -c 'cd playbooks/seqpipe-internal; \
-#         ansible-playbook \
-#             --vault-password-file <(cat <<<"'"$ANSIBLE_VAULT_SEQPIPE"'") \
-#             -i seqpipe-internal seqpipe-internal-destroy.yml'
+    build_run_container bash -c '
+        cd /wd/impala_storage;
+        export PYTHONHASHSEED=0;
+        /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
+          --durations 20 \
+          --cov-config /wd/coveragerc \
+          --junitxml=/wd/results/dae-junit.xml \
+          --cov impala_storage \
+          impala_storage/ || true'
 
-#   }
-
-
-#   build_stage "Deploy gpf on dory.seqpipe.org"
-#   {
-#     local image_ref
-#     image_ref="$(e docker_img_iossifovlab_infra)"
-#     build_run_ctx_init "container" "$image_ref"
-#     defer_ret build_run_ctx_reset
-
-#     build_run bash -c 'cd playbooks/seqpipe-internal; \
-#         ansible-playbook \
-#             --vault-password-file <(cat <<<"'"$ANSIBLE_VAULT_SEQPIPE"'") \
-#             -i seqpipe-internal seqpipe-internal-deploy.yml'
-
-#   }
-
-#   build_stage "Deploy federation on dory.seqpipe.org"
-#   {
-#     local image_ref
-#     image_ref="$(e docker_img_iossifovlab_infra)"
-#     build_run_ctx_init "container" "$image_ref"
-#     defer_ret build_run_ctx_reset
-
-#     build_run bash -c 'cd playbooks/seqpipe-internal; \
-#         ansible-playbook \
-#             --vault-password-file <(cat <<<"'"$ANSIBLE_VAULT_SEQPIPE"'") \
-#             -i seqpipe-internal seqpipe-federation-deploy.yml'
-
-#   }
-
-#   build_stage "Clean up images on dory.seqpipe.org"
-#   {
-#     local image_ref
-#     image_ref="$(e docker_img_iossifovlab_infra)"
-#     build_run_ctx_init "container" "$image_ref"
-#     defer_ret build_run_ctx_reset
-
-#     build_run bash -c 'cd playbooks/seqpipe-internal; \
-#         ansible-playbook \
-#             --vault-password-file <(cat <<<"'"$ANSIBLE_VAULT_SEQPIPE"'") \
-#             -i seqpipe-internal seqpipe-internal-cleanup.yml'
-#   }
-
-#   build_stage "Draw dependencies"
-#   {
-
-#     build_deps_graph_write_image 'build-env/dependency-graph.svg'
-
-#   }
-
-#   build_stage "Run GPF import workflow"
-#   {
-#     build_run_local mkdir -p modules
-#     build_run_local cd modules
-
-#     build_run_local bash -e -x <<'EOF'
-#         if ! [ -d "gpf_import_workflow_testing" ]; then
-#             git clone git@github.com:seqpipe/gpf_import_workflow_testing.git
-#             cd gpf_import_workflow_testing
-#             git submodule update --init
-#             cd -
-#         fi
-#         cd gpf_import_workflow_testing
-#         git checkout master
-#         git pull --ff-only
-#         git submodule update
-
-#         rm -rf build-env/*
-
-#         find ../../build-env \
-#             -iname "*.combined-input.build-env.sh" -print0 | \
-#             xargs -0 cp -t build-env/    
-# EOF
-
-#     build_run_local cd gpf_import_workflow_testing
-#     build_run_local ./build.sh preset:"$preset" clobber:allow_if_matching_values build_no:"$build_no" expose_ports:no generate_jenkins_init:no
-#   }
-
-
-#   build_stage "Run GPF smoke tests"
-#   {
-#     build_run_local mkdir -p modules
-#     build_run_local cd modules
-
-#     build_run_local bash -e -x <<'EOF'
-#         if ! [ -d "gpf_smoke_tests" ]; then
-#             git clone git@github.com:iossifovlab/gpf_smoke_tests.git
-#             cd gpf_smoke_tests
-#             git submodule update --init
-#             cd -
-#         fi
-#         cd gpf_smoke_tests
-#         git checkout master
-#         git pull --ff-only
-#         git submodule update
-
-#         rm -rf build-env/*
-
-#         find ../../build-env \
-#             -iname "*.combined-input.build-env.sh" -print0 | \
-#             xargs -0 cp -t build-env/    
-# EOF
-
-#     build_run_local cd gpf_smoke_tests
-#     build_run_local ./build.sh preset:"$preset" clobber:allow_if_matching_values build_no:"$build_no" expose_ports:no generate_jenkins_init:no
-
-#     build_run_local  bash -e -x <<'EOF'
-
-#         cd test-results
-#         head -1 results.xml | grep -e 'failures="0"' | grep -e 'errors="0"'
-#         exit $?
-
-# EOF
-
-#   }
+    build_run_local cp ./results/dae-junit.xml ./test-results/
+  }
 
 }
 
