@@ -209,14 +209,16 @@ EOT
 
     build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
-    # # Combine coverage information from tests in dae/, wdae/ and tests/
-    # build_run_container coverage combine $project_dir/dae/.coverage $project_dir/impala_storage/.coverage
+    build_run_attach
 
-    # # Convert coverage information to XML coberture format
-    # build_run_container coverage xml
-    # build_run_container cp coverage.xml ./test-results/
-
-    # build_run_container coverage html --title "GPF impala storage" -d ./test-results/coverage-html
+    build_run_container bash -c '
+        project_dir="/wd/projects/iossifovlab.gpf.repo";
+        cd $project_dir/impala_storage;
+        if [ -f ".coverage" ]; then
+            coverage xml;
+            cp -f coverage.xml /wd/test-results/;
+            coverage html --title "GPF impala storage" -d /wd/test-results/coverage-html;          
+        fi'
 
   }
 
