@@ -1,3 +1,9 @@
 build-env
 .build-scripts-tmp-sessions
 projects
+results
+test-results
+data
+cache
+coverage.xml
+.coverage

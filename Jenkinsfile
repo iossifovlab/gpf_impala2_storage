@@ -32,47 +32,30 @@ pipeline {
       script {
         try {
           resultBeforeTests = currentBuild.currentResult
-          junit 'test-results/wdae-junit.xml, test-results/dae-junit.xml, test-results/dae-tests-junit.xml, test-results/wdae-tests-junit.xml'
+          junit 'test-results/impala-storage-junit.xml, test-results/impala-storage-integration-junit.xml'
           sh "test ${resultBeforeTests} == ${currentBuild.currentResult}"
 
           cobertura coberturaReportFile: 'test-results/coverage.xml',
             enableNewApi: false, onlyStable: false, sourceEncoding: 'ASCII'
 
-          recordIssues(
-            enabledForFailure: true, aggregatingResults: false,
-            tools: [
-              flake8(pattern: 'test-results/flake8_report', reportEncoding: 'UTF-8'),
-              myPy(pattern: 'test-results/mypy_dae_report', reportEncoding: 'UTF-8', id: 'mypy-dae', name: 'MyPy - dae'),
-              myPy(pattern: 'test-results/mypy_wdae_report', reportEncoding: 'UTF-8', id: 'mypy-wdae', name: 'MyPy - wdae'),
-              pyLint(pattern: 'test-results/pylint_gpf_report', reportEncoding: 'UTF-8')
-            ],
-            qualityGates: [[threshold: 1, type: 'DELTA', unstable: true]]
+        //   recordIssues(
+        //     enabledForFailure: true, aggregatingResults: false,
+        //     tools: [
+        //       flake8(pattern: 'test-results/flake8_report', reportEncoding: 'UTF-8'),
+        //       myPy(pattern: 'test-results/mypy_dae_report', reportEncoding: 'UTF-8', id: 'mypy-dae', name: 'MyPy - dae'),
+        //       myPy(pattern: 'test-results/mypy_wdae_report', reportEncoding: 'UTF-8', id: 'mypy-wdae', name: 'MyPy - wdae'),
+        //       pyLint(pattern: 'test-results/pylint_gpf_report', reportEncoding: 'UTF-8')
+        //     ],
+        //     qualityGates: [[threshold: 1, type: 'DELTA', unstable: true]]
+        //   )
 
-          )
-
-          publishHTML (target : [allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'test-results/coverage-html',
-            reportFiles: 'index.html',
-            reportName: 'gpf-coverage-report',
-            reportTitles: 'gpf-coverage-report'])
-
-          publishHTML (target : [allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'test-results/',
-            reportFiles: 'bandit_*dae_report.html',
-            reportName: 'bandit-dae-report',
-            reportTitles: 'bandit-dae-report'])
-
-          publishHTML (target : [allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'test-results/',
-            reportFiles: 'bandit_wdae_report.html',
-            reportName: 'bandit-wdae-report',
-            reportTitles: 'bandit-wdae-report'])
+        //   publishHTML (target : [allowMissing: true,
+        //     alwaysLinkToLastBuild: true,
+        //     keepAll: true,
+        //     reportDir: 'test-results/coverage-html',
+        //     reportFiles: 'index.html',
+        //     reportName: 'gpf-coverage-report',
+        //     reportTitles: 'gpf-coverage-report'])
 
         } finally {
           zulipNotification(

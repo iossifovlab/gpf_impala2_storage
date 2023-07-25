@@ -52,9 +52,9 @@ function main() {
     defer_ret build_run_ctx_reset
 
     build_run rm -rvf ./build-env/*.yaml
-    build_run rm -rf /wd/results /wd/sources /wd/channel
+    build_run rm -rf /wd/results /wd/sources /wd/test-results /wd/data
 
-    build_run_local mkdir -p results
+    build_run_local mkdir -p results test-results
 
   }
 
@@ -85,6 +85,34 @@ EOF
 EOF
 
   }
+
+  # prepare gpf data
+  build_stage "Prepare GPF environment"
+  {
+    build_run_local bash -c "mkdir -p ./cache"
+    build_run_local bash -c "touch ./cache/grr_definition.yaml"
+    build_run_local bash -c 'cat > ./cache/grr_definition.yaml << EOT
+id: "default"
+type: "url"
+url: "https://grr.seqpipe.org/"
+cache_dir: "/wd/cache/grrCache"
+EOT
+'
+
+    build_run_local bash -c "mkdir -p ./data/data-hg19-empty"
+    build_run_local bash -c "touch ./data/data-hg19-empty/gpf_instance.yaml"
+
+    build_run_local bash -c 'cat > ./data/data-hg19-empty/gpf_instance.yaml << EOT
+reference_genome:
+  resource_id: "hg19/genomes/GATK_ResourceBundle_5777_b37_phiX174"
+
+gene_models:
+  resource_id: "hg19/gene_models/refGene_v20190211"
+
+EOT
+'
+  }
+
 
   local gpf_impala_storage_image="gpf-impala-storage-dev"
   local gpf_impala_storage_image_ref
@@ -126,33 +154,61 @@ EOF
   # Tests - dae
   build_stage "Tests - impala_storage"
   {
+    local project_dir
+    project_dir="/wd/projects/iossifovlab.gpf.repo"
 
     build_run_ctx_init "container" "${gpf_impala_storage_image_ref}" \
       --network "${ctx_network["network_id"]}" \
-      --env DAE_DB_DIR="/wd/data/data-hg19-local/" \
+      --env DAE_DB_DIR="/wd/data/data-hg19-empty/" \
       --env GRR_DEFINITION_FILE="/wd/cache/grr_definition.yaml" \
-      --env TEST_REMOTE_HOST="gpfremote" \
       --env DAE_HDFS_HOST="impala" \
       --env DAE_IMPALA_HOST="impala"
 
     defer_ret build_run_ctx_reset
-
-    for d in /wd/dae /wd/wdae /wd/dae_conftests /wd/impala_storage; do
+    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
     done
 
+    build_run_attach
+
     build_run_container bash -c '
-        cd /wd/impala_storage;
+        project_dir="/wd/projects/iossifovlab.gpf.repo";
+        cd $project_dir/impala_storage;
         export PYTHONHASHSEED=0;
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
-          --cov-config /wd/coveragerc \
-          --junitxml=/wd/results/dae-junit.xml \
+          --cov-config $project_dir/coveragerc \
+          --junitxml=/wd/results/impala-storage-junit.xml \
           --cov impala_storage \
           impala_storage/ || true'
 
-    build_run_local cp ./results/dae-junit.xml ./test-results/
+    build_run_container cp /wd/results/impala-storage-junit.xml /wd/test-results/
+
+    build_run_attach
+
+    build_run_container bash -c '
+        project_dir="/wd/projects/iossifovlab.gpf.repo";
+        cd $project_dir/impala_storage;
+        export PYTHONHASHSEED=0;
+        /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
+          --durations 20 \
+          --cov-config $project_dir/coveragerc \
+          --junitxml=/wd/results/impala-storage-integration-junit.xml \
+          --cov-append --cov impala_storage \
+          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala_storages.yaml || true'
+
+    build_run_container cp /wd/results/impala-storage-integration-junit.xml /wd/test-results/
+
+    # Combine coverage information from tests in dae/, wdae/ and tests/
+    build_run_container coverage combine $project_dir/dae/.coverage $project_dir/impala_storage/.coverage
+
+    # Convert coverage information to XML coberture format
+    build_run_container coverage xml
+    build_run_container cp coverage.xml ./test-results/
+
+    build_run_container coverage html --title "GPF impala storage" -d ./test-results/coverage-html
+
   }
 
 }
