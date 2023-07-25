@@ -170,8 +170,6 @@ EOT
         pip install -e .'
     done
 
-    build_run_attach
-
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
         cd $project_dir/impala_storage;
@@ -185,7 +183,18 @@ EOT
 
     build_run_container cp /wd/results/impala-storage-junit.xml /wd/test-results/
 
-    build_run_attach
+    build_run_container bash -c '
+        project_dir="/wd/projects/iossifovlab.gpf.repo";
+        cd $project_dir/impala_storage;
+        export PYTHONHASHSEED=0;
+        /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
+          --durations 20 \
+          --cov-config $project_dir/coveragerc \
+          --junitxml=/wd/results/impala1-storage-integration-junit.xml \
+          --cov-append --cov impala_storage \
+          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala1_storage.yaml || true'
+
+    build_run_container cp /wd/results/impala1-storage-integration-junit.xml /wd/test-results/
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
@@ -194,20 +203,20 @@ EOT
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
           --cov-config $project_dir/coveragerc \
-          --junitxml=/wd/results/impala-storage-integration-junit.xml \
+          --junitxml=/wd/results/impala2-storage-integration-junit.xml \
           --cov-append --cov impala_storage \
-          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala_storages.yaml || true'
+          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala2_storage.yaml || true'
 
-    build_run_container cp /wd/results/impala-storage-integration-junit.xml /wd/test-results/
+    build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
-    # Combine coverage information from tests in dae/, wdae/ and tests/
-    build_run_container coverage combine $project_dir/dae/.coverage $project_dir/impala_storage/.coverage
+    # # Combine coverage information from tests in dae/, wdae/ and tests/
+    # build_run_container coverage combine $project_dir/dae/.coverage $project_dir/impala_storage/.coverage
 
-    # Convert coverage information to XML coberture format
-    build_run_container coverage xml
-    build_run_container cp coverage.xml ./test-results/
+    # # Convert coverage information to XML coberture format
+    # build_run_container coverage xml
+    # build_run_container cp coverage.xml ./test-results/
 
-    build_run_container coverage html --title "GPF impala storage" -d ./test-results/coverage-html
+    # build_run_container coverage html --title "GPF impala storage" -d ./test-results/coverage-html
 
   }
 

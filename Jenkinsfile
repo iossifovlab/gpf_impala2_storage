@@ -32,11 +32,11 @@ pipeline {
       script {
         try {
           resultBeforeTests = currentBuild.currentResult
-          junit 'test-results/impala-storage-junit.xml, test-results/impala-storage-integration-junit.xml'
+          junit 'test-results/impala-storage-junit.xml, test-results/impala1-storage-integration-junit.xml, test-results/impala2-storage-integration-junit.xml'
           sh "test ${resultBeforeTests} == ${currentBuild.currentResult}"
 
-          cobertura coberturaReportFile: 'test-results/coverage.xml',
-            enableNewApi: false, onlyStable: false, sourceEncoding: 'ASCII'
+        //   cobertura coberturaReportFile: 'test-results/coverage.xml',
+        //     enableNewApi: false, onlyStable: false, sourceEncoding: 'ASCII'
 
         //   recordIssues(
         //     enabledForFailure: true, aggregatingResults: false,
