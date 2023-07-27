@@ -209,8 +209,6 @@ EOT
 
     build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
-    build_run_attach
-
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
         cd $project_dir/impala_storage;
