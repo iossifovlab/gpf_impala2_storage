@@ -198,7 +198,7 @@ EOT
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         if [ -f ".coverage" ]; then
             coverage xml;
             cp -f coverage.xml /wd/test-results/;
