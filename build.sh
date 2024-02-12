@@ -32,7 +32,7 @@ function main() {
   local generate_jenkins_init="${options["generate_jenkins_init"]}"
   local expose_ports="${options["expose_ports"]}"
 
-  libmain_init iossifovlab.gpf_impala_storage gpf_impala_storage
+  libmain_init iossifovlab.gpf_impala2_storage gpf_impala2_storage
   libmain_init_build_env \
     clobber:"$clobber" preset:"$preset" build_no:"$build_no" \
     generate_jenkins_init:"$generate_jenkins_init" \
@@ -114,18 +114,18 @@ EOT
   }
 
 
-  local gpf_impala_storage_image="gpf-impala-storage-dev"
-  local gpf_impala_storage_image_ref
+  local gpf_impala2_storage_image="gpf-impala2-storage-dev"
+  local gpf_impala2_storage_image_ref
   # create gpf docker image
-  build_stage "Create gpf_impala_storage docker image"
+  build_stage "Create gpf_impala2_storage docker image"
   {
     local gpf_dev_tag
     gpf_dev_tag="$(e docker_img_gpf_dev_tag)"
-    build_docker_image_create "$gpf_impala_storage_image" \
-        "projects/iossifovlab.gpf.repo/impala_storage" \
-        "projects/iossifovlab.gpf.repo/impala_storage/Dockerfile" \
+    build_docker_image_create "$gpf_impala2_storage_image" \
+        "projects/iossifovlab.gpf.repo/impala2_storage" \
+        "projects/iossifovlab.gpf.repo/impala2_storage/Dockerfile" \
         "$gpf_dev_tag"
-    gpf_impala_storage_image_ref="$(e docker_img_gpf_impala_storage_dev)"
+    gpf_impala2_storage_image_ref="$(e docker_img_gpf_impala2_storage_dev)"
   }
 
   build_stage "Create network"
@@ -152,12 +152,12 @@ EOT
   }
 
   # Tests - dae
-  build_stage "Tests - impala_storage"
+  build_stage "Tests - impala2_storage"
   {
     local project_dir
     project_dir="/wd/projects/iossifovlab.gpf.repo"
 
-    build_run_ctx_init "container" "${gpf_impala_storage_image_ref}" \
+    build_run_ctx_init "container" "${gpf_impala2_storage_image_ref}" \
       --network "${ctx_network["network_id"]}" \
       --env DAE_DB_DIR="/wd/data/data-hg19-empty/" \
       --env GRR_DEFINITION_FILE="/wd/cache/grr_definition.yaml" \
