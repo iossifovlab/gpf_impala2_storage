@@ -165,49 +165,36 @@ EOT
       --env DAE_IMPALA_HOST="impala"
 
     defer_ret build_run_ctx_reset
-    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala_storage; do
+    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala2_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
     done
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         export PYTHONHASHSEED=0;
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
           --cov-config $project_dir/coveragerc \
-          --junitxml=/wd/results/impala-storage-junit.xml \
-          --cov impala_storage \
-          impala_storage/ || true'
+          --junitxml=/wd/results/impala2-storage-junit.xml \
+          --cov impala2_storage \
+          impala2_storage/ || true'
 
-    build_run_container cp /wd/results/impala-storage-junit.xml /wd/test-results/
+    build_run_container cp /wd/results/impala2-storage-junit.xml /wd/test-results/
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         export PYTHONHASHSEED=0;
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
           --cov-config $project_dir/coveragerc \
-          --junitxml=/wd/results/impala1-storage-integration-junit.xml \
-          --cov-append --cov impala_storage \
-          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala1_storage.yaml || true'
+          --junitxml=/wd/results/impala2-storage-integration-junit.xml \
+          --cov-append --cov impala2_storage \
+          $project_dir/dae/tests/ --gsf $project_dir/impala2_storage/impala2_storage/tests/impala2_storage.yaml || true'
 
-    build_run_container cp /wd/results/impala1-storage-integration-junit.xml /wd/test-results/
-
-    # build_run_container bash -c '
-    #     project_dir="/wd/projects/iossifovlab.gpf.repo";
-    #     cd $project_dir/impala_storage;
-    #     export PYTHONHASHSEED=0;
-    #     /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
-    #       --durations 20 \
-    #       --cov-config $project_dir/coveragerc \
-    #       --junitxml=/wd/results/impala2-storage-integration-junit.xml \
-    #       --cov-append --cov impala_storage \
-    #       $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala2_storage.yaml || true'
-
-    # build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
+    build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";

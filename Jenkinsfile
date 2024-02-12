@@ -32,30 +32,19 @@ pipeline {
       script {
         try {
           resultBeforeTests = currentBuild.currentResult
-          junit 'test-results/impala-storage-junit.xml, test-results/impala1-storage-integration-junit.xml, test-results/impala2-storage-integration-junit.xml'
+          junit 'test-results/impala2-storage-junit.xml, test-results/impala2-storage-integration-junit.xml'
           sh "test ${resultBeforeTests} == ${currentBuild.currentResult}"
 
           cobertura coberturaReportFile: 'test-results/coverage.xml',
             enableNewApi: false, onlyStable: false, sourceEncoding: 'ASCII'
-
-        //   recordIssues(
-        //     enabledForFailure: true, aggregatingResults: false,
-        //     tools: [
-        //       flake8(pattern: 'test-results/flake8_report', reportEncoding: 'UTF-8'),
-        //       myPy(pattern: 'test-results/mypy_dae_report', reportEncoding: 'UTF-8', id: 'mypy-dae', name: 'MyPy - dae'),
-        //       myPy(pattern: 'test-results/mypy_wdae_report', reportEncoding: 'UTF-8', id: 'mypy-wdae', name: 'MyPy - wdae'),
-        //       pyLint(pattern: 'test-results/pylint_gpf_report', reportEncoding: 'UTF-8')
-        //     ],
-        //     qualityGates: [[threshold: 1, type: 'DELTA', unstable: true]]
-        //   )
 
           publishHTML (target : [allowMissing: true,
             alwaysLinkToLastBuild: true,
             keepAll: true,
             reportDir: 'test-results/coverage-html',
             reportFiles: 'index.html',
-            reportName: 'gpf-impala-storage-coverage-report',
-            reportTitles: 'gpf-impala-storage-coverage-report'])
+            reportName: 'gpf-impala2-storage-coverage-report',
+            reportTitles: 'gpf-impala2-storage-coverage-report'])
 
         } finally {
           zulipNotification(
