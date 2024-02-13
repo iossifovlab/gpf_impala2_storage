@@ -148,7 +148,6 @@ EOT
     defer_ret build_run_ctx_reset ctx:ctx_impala
 
     # build_run_container ctx:ctx_impala /wait-for-it.sh -h localhost -p 21050 -t 300
-    build_run_local scripts/wait-for-it.sh -h impala -p 21050 -t 300
     build_run_ctx_persist ctx:ctx_impala
   }
 
@@ -166,6 +165,9 @@ EOT
       --env DAE_IMPALA_HOST="impala"
 
     defer_ret build_run_ctx_reset
+
+    build_run_container scripts/wait-for-it.sh -h impala -p 21050 -t 300
+
     for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala2_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
