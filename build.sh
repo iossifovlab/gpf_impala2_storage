@@ -147,8 +147,8 @@ EOT
 
     defer_ret build_run_ctx_reset ctx:ctx_impala
 
-    build_run_container ctx:ctx_impala /wait-for-it.sh -h localhost -p 21050 -t 300
-
+    # build_run_container ctx:ctx_impala /wait-for-it.sh -h localhost -p 21050 -t 300
+    build_run_local scripts/wait-for-it.sh -h impala -p 21050 -t 300
     build_run_ctx_persist ctx:ctx_impala
   }
 
