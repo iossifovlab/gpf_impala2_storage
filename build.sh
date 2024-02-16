@@ -42,6 +42,8 @@ function main() {
   libmain_save_build_env_on_exit
   libbuild_init stage:"$stage" registry.seqpipe.org
 
+  defer_ret build_run_ctx_reset_all_persistent
+
   build_run_ctx_init "local"
   defer_ret build_run_ctx_reset
 
