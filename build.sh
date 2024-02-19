@@ -32,7 +32,7 @@ function main() {
   local generate_jenkins_init="${options["generate_jenkins_init"]}"
   local expose_ports="${options["expose_ports"]}"
 
-  libmain_init iossifovlab.gpf_impala_storage gpf_impala_storage
+  libmain_init iossifovlab.gpf_impala2_storage gpf_impala2_storage
   libmain_init_build_env \
     clobber:"$clobber" preset:"$preset" build_no:"$build_no" \
     generate_jenkins_init:"$generate_jenkins_init" \
@@ -41,6 +41,8 @@ function main() {
 
   libmain_save_build_env_on_exit
   libbuild_init stage:"$stage" registry.seqpipe.org
+
+  defer_ret build_run_ctx_reset_all_persistent
 
   build_run_ctx_init "local"
   defer_ret build_run_ctx_reset
@@ -114,18 +116,18 @@ EOT
   }
 
 
-  local gpf_impala_storage_image="gpf-impala-storage-dev"
-  local gpf_impala_storage_image_ref
+  local gpf_impala2_storage_image="gpf-impala2-storage-dev"
+  local gpf_impala2_storage_image_ref
   # create gpf docker image
-  build_stage "Create gpf_impala_storage docker image"
+  build_stage "Create gpf_impala2_storage docker image"
   {
     local gpf_dev_tag
     gpf_dev_tag="$(e docker_img_gpf_dev_tag)"
-    build_docker_image_create "$gpf_impala_storage_image" \
-        "projects/iossifovlab.gpf.repo/impala_storage" \
-        "projects/iossifovlab.gpf.repo/impala_storage/Dockerfile" \
+    build_docker_image_create "$gpf_impala2_storage_image" \
+        "projects/iossifovlab.gpf.repo/impala2_storage" \
+        "projects/iossifovlab.gpf.repo/impala2_storage/Dockerfile" \
         "$gpf_dev_tag"
-    gpf_impala_storage_image_ref="$(e docker_img_gpf_impala_storage_dev)"
+    gpf_impala2_storage_image_ref="$(e docker_img_gpf_impala2_storage_dev)"
   }
 
   build_stage "Create network"
@@ -140,24 +142,24 @@ EOT
   build_stage "Run impala"
   {
     local -A ctx_impala
-    build_run_ctx_init ctx:ctx_impala "persistent" "container" "seqpipe/seqpipe-docker-impala:latest" \
+    build_run_ctx_init ctx:ctx_impala "persistent" "container" \
+        "registry.seqpipe.org/seqpipe-impala4:latest" \
         "cmd-from-image" "no-def-mounts" \
         ports:21050,8020 --hostname impala --network "${ctx_network["network_id"]}"
 
     defer_ret build_run_ctx_reset ctx:ctx_impala
 
-    build_run_container ctx:ctx_impala /wait-for-it.sh -h localhost -p 21050 -t 300
-
+    # build_run_container ctx:ctx_impala /wait-for-it.sh -h localhost -p 21050 -t 300
     build_run_ctx_persist ctx:ctx_impala
   }
 
   # Tests - dae
-  build_stage "Tests - impala_storage"
+  build_stage "Tests - impala2_storage"
   {
     local project_dir
     project_dir="/wd/projects/iossifovlab.gpf.repo"
 
-    build_run_ctx_init "container" "${gpf_impala_storage_image_ref}" \
+    build_run_ctx_init "container" "${gpf_impala2_storage_image_ref}" \
       --network "${ctx_network["network_id"]}" \
       --env DAE_DB_DIR="/wd/data/data-hg19-empty/" \
       --env GRR_DEFINITION_FILE="/wd/cache/grr_definition.yaml" \
@@ -165,53 +167,43 @@ EOT
       --env DAE_IMPALA_HOST="impala"
 
     defer_ret build_run_ctx_reset
-    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala_storage; do
+
+    build_run_container scripts/wait-for-it.sh -h impala -p 21050 -t 300
+
+    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala2_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
     done
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         export PYTHONHASHSEED=0;
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
           --cov-config $project_dir/coveragerc \
-          --junitxml=/wd/results/impala-storage-junit.xml \
-          --cov impala_storage \
-          impala_storage/ || true'
+          --junitxml=/wd/results/impala2-storage-junit.xml \
+          --cov impala2_storage \
+          impala2_storage/ || true'
 
-    build_run_container cp /wd/results/impala-storage-junit.xml /wd/test-results/
-
-    build_run_container bash -c '
-        project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
-        export PYTHONHASHSEED=0;
-        /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
-          --durations 20 \
-          --cov-config $project_dir/coveragerc \
-          --junitxml=/wd/results/impala1-storage-integration-junit.xml \
-          --cov-append --cov impala_storage \
-          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala1_storage.yaml || true'
-
-    build_run_container cp /wd/results/impala1-storage-integration-junit.xml /wd/test-results/
+    build_run_container cp /wd/results/impala2-storage-junit.xml /wd/test-results/
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         export PYTHONHASHSEED=0;
         /opt/conda/bin/conda run --no-capture-output -n gpf py.test -v \
           --durations 20 \
           --cov-config $project_dir/coveragerc \
           --junitxml=/wd/results/impala2-storage-integration-junit.xml \
-          --cov-append --cov impala_storage \
-          $project_dir/dae/tests/ --gsf $project_dir/impala_storage/impala_storage/tests/impala2_storage.yaml || true'
+          --cov-append --cov impala2_storage \
+          $project_dir/dae/tests/ --gsf $project_dir/impala2_storage/impala2_storage/tests/impala2_storage.yaml || true'
 
     build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
     build_run_container bash -c '
         project_dir="/wd/projects/iossifovlab.gpf.repo";
-        cd $project_dir/impala_storage;
+        cd $project_dir/impala2_storage;
         if [ -f ".coverage" ]; then
             coverage xml;
             cp -f coverage.xml /wd/test-results/;
