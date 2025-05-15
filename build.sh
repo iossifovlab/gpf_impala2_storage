@@ -170,7 +170,7 @@ EOT
 
     build_run_container scripts/wait-for-it.sh -h impala -p 21050 -t 300
 
-    for d in $project_dir/dae $project_dir/wdae $project_dir/dae_conftests $project_dir/impala2_storage; do
+    for d in $project_dir/dae $project_dir/wdae $project_dir/impala2_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
     done
