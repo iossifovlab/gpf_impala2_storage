@@ -197,7 +197,7 @@ EOT
           --cov-config $project_dir/coveragerc \
           --junitxml=/wd/results/impala2-storage-integration-junit.xml \
           --cov-append --cov impala2_storage \
-          $project_dir/dae/tests/ --gsf $project_dir/impala2_storage/impala2_storage/tests/impala2_storage.yaml || true'
+          $project_dir/dae/tests/integration --gsf $project_dir/impala2_storage/impala2_storage/tests/impala2_storage.yaml || true'
 
     build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
 
