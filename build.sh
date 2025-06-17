@@ -143,7 +143,7 @@ EOT
   {
     local -A ctx_impala
     build_run_ctx_init ctx:ctx_impala "persistent" "container" \
-        "registry.seqpipe.org/seqpipe-impala4:latest" \
+        "iossifovlab/seqpipe-impala4:latest" \
         "cmd-from-image" "no-def-mounts" \
         ports:21050,8020 --hostname impala --network "${ctx_network["network_id"]}"
 
