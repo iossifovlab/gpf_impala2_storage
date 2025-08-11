@@ -35,8 +35,9 @@ pipeline {
           junit 'test-results/impala2-storage-junit.xml, test-results/impala2-storage-integration-junit.xml'
           sh "test ${resultBeforeTests} == ${currentBuild.currentResult}"
 
-          cobertura coberturaReportFile: 'test-results/coverage.xml',
-            enableNewApi: false, onlyStable: false, sourceEncoding: 'ASCII'
+          recordCoverage sourceCodeEncoding: 'ASCII', enabledForFailure: true, sourceCodeRetention: 'LAST_BUILD', tools: [
+            [tool: 'COBERTURA', pattern: 'test-results/coverage.xml']
+          ]
 
           publishHTML (target : [allowMissing: true,
             alwaysLinkToLastBuild: true,
