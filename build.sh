@@ -170,7 +170,7 @@ EOT
 
     build_run_container scripts/wait-for-it.sh -h impala -p 21050 -t 300
 
-    for d in $project_dir/dae $project_dir/wdae $project_dir/impala2_storage; do
+    for d in $project_dir/gain_core $project_dir/gpf_core $project_dir/gpf_web $project_dir/impala2_storage; do
       build_run_container bash -c 'cd "'"${d}"'"; /opt/conda/bin/conda run --no-capture-output -n gpf \
         pip install -e .'
     done
@@ -197,7 +197,7 @@ EOT
           --cov-config $project_dir/coveragerc \
           --junitxml=/wd/results/impala2-storage-integration-junit.xml \
           --cov-append --cov impala2_storage \
-          $project_dir/dae/tests/integration/genotype_storage \
+          $project_dir/gpf_core/tests/integration/genotype_storage \
           --gsf $project_dir/impala2_storage/impala2_storage/tests/impala2_storage.yaml || true'
 
     build_run_container cp /wd/results/impala2-storage-integration-junit.xml /wd/test-results/
